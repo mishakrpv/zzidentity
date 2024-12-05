@@ -2,6 +2,11 @@ SRCS = $(shell git ls-files '*.go' | grep -v '^vendor/')
 
 BIN_NAME := zzidentity
 
+.PHONY: debug
+#? debug: Run Delve
+debug:
+	dlv debug cmd/$(BIN_NAME)/$(BIN_NAME).go
+
 .PHONY: run
 #? run: Run the application
 run:
