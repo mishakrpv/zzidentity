@@ -10,7 +10,9 @@ debug:
 .PHONY: run
 #? run: Run the application
 run:
-	@go run cmd/$(BIN_NAME)/$(BIN_NAME).go
+	export CONFIG_FILE="$(shell pwd)/settings.yaml"; \
+	export DOTENV_FILE="$(shell pwd)/.env"; \
+	go run cmd/$(BIN_NAME)/$(BIN_NAME).go
 
 .PHONY: lint
 #? lint: Run golangci-lint

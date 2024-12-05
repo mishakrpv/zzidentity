@@ -6,42 +6,62 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"reflect"
+	"strconv"
 
+	"github.com/joho/godotenv"
 	"gopkg.in/yaml.v3"
 )
 
 type Configuration struct {
+	Unsupported              map[string]string `key:"UNSUPPORTED"`
+	Environment              string            `yaml:"environment"`
+	FromEnvBool              bool              `key:"BOOL"`
+	FromEnvInt               int8              `key:"INT"`
+	FromEnvUint              uint16            `key:"UINT"`
+	FromEnvFloat             float32           `key:"FLOAT"`
 	FromEnv                  string            `key:"ENV_ARG"`
 	FromSettingsFile         string            `yaml:"fromSettings"`
-	FromCommandLineArguments string            `key:"CLA"`
+	FromCommandLineArguments string            `key:"CL_ARG"`
 	Sub                      *SubConfiguration `yaml:"sub" key:"SUB"`
 }
 
 type SubConfiguration struct {
-	FromEnv                  string `key:"ENV_ARG"`
-	FromCommandLineArguments string `key:"CLI_ARGUMENT"`
-	FromSettingsFile         string `yaml:"fromSettings"`
+	FromEnvBool              bool    `key:"BOOL"`
+	FromEnvInt               int8    `key:"INT"`
+	FromEnvUint              uint16  `key:"UINT"`
+	FromEnvFloat             float32 `key:"FLOAT"`
+	FromEnv                  string  `key:"ENV_ARG"`
+	FromCommandLineArguments string  `key:"CL_ARG"`
+	FromSettingsFile         string  `yaml:"fromSettings"`
 }
 
 func Load(configFile string) (*Configuration, error) {
 	cfg := &Configuration{}
 
 	loadDefaults(cfg)
-	err := loadFromSettingsFile(cfg, configFile)
+	err := loadFromSettingsFile(configFile, cfg)
 	if err != nil {
 		return nil, err
 	}
-	loadFromEnvironmentVariables(cfg)
+	err = loadFromEnvironmentVariables(cfg)
+	if err != nil {
+		return nil, err
+	}
 	loadFromCommandLineArguments(cfg)
 
 	return cfg, nil
 }
 
 func loadDefaults(cfg *Configuration) {
-
+	cfg.Environment = "Development"
 }
 
-func loadFromSettingsFile(cfg *Configuration, configFile string) error {
+func loadFromSettingsFile(configFile string, cfg *Configuration) error {
+	if configFile == "" {
+		return nil
+	}
+
 	ext := filepath.Ext(configFile)
 
 	switch {
@@ -84,8 +104,94 @@ func loadFromSettingsFile(cfg *Configuration, configFile string) error {
 	return nil
 }
 
-func loadFromEnvironmentVariables(cfg *Configuration) {
+func loadFromEnvironmentVariables(cfg *Configuration) error {
+	if cfg.Environment == "Development" {
+		err := godotenv.Load(os.Getenv("DOTENV_FILE"))
+		if err != nil {
+			return err
+		}
+	}
 
+	return parseEnv("", cfg)
+}
+
+func parseEnv(prefix string, to interface{}) error {
+	if prefix != "" {
+		prefix += "__"
+	}
+
+	v := reflect.ValueOf(to)
+	if v.Kind() == reflect.Ptr && !v.IsNil() {
+		v = v.Elem()
+	}
+
+	vType := v.Type()
+
+	for i := 0; i < v.NumField(); i++ {
+		field := v.Field(i)
+		fieldType := vType.Field(i)
+		tag := fieldType.Tag.Get("key")
+
+		if tag == "" || tag == "-" {
+			continue
+		}
+
+		tagWithPrefix := prefix + tag
+
+		// if field.Kind() == reflect.Ptr {
+		// 	if field.IsNil() {
+		// 		newStruct := reflect.New(fieldType.Type).Elem()
+		// 		field.Set(newStruct)
+		// 	}
+		// 	field = field.Elem()
+		// }
+
+		// if fieldType.Type.Kind() == reflect.Struct {
+		// 	err := parseEnv(tagWithPrefix, field)
+		// 	if err != nil {
+		// 		return err
+		// 	}
+		// 	continue
+		// }
+
+		envValue := os.Getenv(tagWithPrefix)
+		if envValue == "" {
+			continue
+		}
+
+		switch field.Kind() {
+		case reflect.String:
+			field.SetString(envValue)
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			intValue, err := strconv.ParseInt(envValue, 10, 64)
+			if err != nil {
+				return err
+			}
+			field.SetInt(intValue)
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+			uintValue, err := strconv.ParseUint(envValue, 10, 64)
+			if err != nil {
+				return err
+			}
+			field.SetUint(uintValue)
+		case reflect.Float32, reflect.Float64:
+			floatValue, err := strconv.ParseFloat(envValue, 64)
+			if err != nil {
+				return err
+			}
+			field.SetFloat(floatValue)
+		case reflect.Bool:
+			boolValue, err := strconv.ParseBool(envValue)
+			if err != nil {
+				return err
+			}
+			field.SetBool(boolValue)
+		default:
+			return fmt.Errorf("unsupported type for field '%s': %s", tag, field.Kind())
+		}
+	}
+
+	return nil
 }
 
 func loadFromCommandLineArguments(cfg *Configuration) {

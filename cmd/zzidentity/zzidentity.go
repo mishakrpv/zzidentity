@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 
 	"github.com/zzidentity/zzidentity/pkg/config"
 )
@@ -10,7 +11,7 @@ import (
 func main() {
 	fmt.Println("It works!")
 
-	cfg, err := config.Load("settings.yaml")
+	cfg, err := config.Load(os.Getenv("CONFIG_FILE"))
 	if err != nil {
 		fmt.Printf("Error: %s\n", err.Error())
 	}
