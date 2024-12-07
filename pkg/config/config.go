@@ -14,26 +14,9 @@ import (
 )
 
 type Configuration struct {
-	Unsupported              map[string]string `key:"UNSUPPORTED"`
-	Environment              string            `yaml:"environment"`
-	FromEnvBool              bool              `key:"BOOL"`
-	FromEnvInt               int8              `key:"INT"`
-	FromEnvUint              uint16            `key:"UINT"`
-	FromEnvFloat             float32           `key:"FLOAT"`
-	FromEnv                  string            `key:"ENV_ARG"`
-	FromSettingsFile         string            `yaml:"fromSettings"`
-	FromCommandLineArguments string            `key:"CL_ARG"`
-	Sub                      *SubConfiguration `yaml:"sub" key:"SUB"`
-}
+	Environment string `yaml:"environment"`
 
-type SubConfiguration struct {
-	FromEnvBool              bool    `key:"BOOL"`
-	FromEnvInt               int8    `key:"INT"`
-	FromEnvUint              uint16  `key:"UINT"`
-	FromEnvFloat             float32 `key:"FLOAT"`
-	FromEnv                  string  `key:"ENV_ARG"`
-	FromCommandLineArguments string  `key:"CL_ARG"`
-	FromSettingsFile         string  `yaml:"fromSettings"`
+	Postgres *Postgres `yaml:"postgres"`
 }
 
 func New(configFile string) (*Configuration, error) {
@@ -64,6 +47,7 @@ func loadSettings(cfg *Configuration, configFile string) error {
 	ext := filepath.Ext(configFile)
 
 	switch {
+
 	case ext == ".yaml" || ext == ".yml":
 		yamlFile, err := os.Open(configFile)
 		if err != nil {
@@ -80,6 +64,7 @@ func loadSettings(cfg *Configuration, configFile string) error {
 		if err != nil {
 			return err
 		}
+
 	case ext == ".json":
 		jsonFile, err := os.Open(configFile)
 		if err != nil {
@@ -96,8 +81,10 @@ func loadSettings(cfg *Configuration, configFile string) error {
 		if err != nil {
 			return err
 		}
+
 	default:
 		return fmt.Errorf("unsupported settings file extension: %s", ext)
+
 	}
 
 	return nil
