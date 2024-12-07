@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/zzidentity/zzidentity/pkg/config"
+	"github.com/zzidentity/zzidentity/pkg/state"
 )
 
 func main() {
@@ -19,4 +20,9 @@ func main() {
 	jsonConf, _ := json.Marshal(cfg)
 
 	fmt.Println(string(jsonConf))
+
+	_, err = state.Open(cfg.Postgres)
+	if err != nil {
+		fmt.Printf("Error: %s\n", err.Error())
+	}
 }
