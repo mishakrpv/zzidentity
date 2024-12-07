@@ -138,21 +138,13 @@ func parseEnv(prefix string, to interface{}) error {
 
 		tagWithPrefix := prefix + tag
 
-		// if field.Kind() == reflect.Ptr {
-		// 	if field.IsNil() {
-		// 		newStruct := reflect.New(fieldType.Type).Elem()
-		// 		field.Set(newStruct)
-		// 	}
-		// 	field = field.Elem()
-		// }
-
-		// if fieldType.Type.Kind() == reflect.Struct {
-		// 	err := parseEnv(tagWithPrefix, field)
-		// 	if err != nil {
-		// 		return err
-		// 	}
-		// 	continue
-		// }
+		if field.Kind() == reflect.Ptr && !field.IsNil() && field.Type().Elem().Kind() == reflect.Struct {
+			err := parseEnv(tagWithPrefix, field.Interface())
+			if err != nil {
+				return err
+			}
+			continue
+		}
 
 		envValue := os.Getenv(tagWithPrefix)
 		if envValue == "" {
