@@ -11,7 +11,7 @@ import (
 func main() {
 	fmt.Println("It works!")
 
-	cfg, err := config.Load(os.Getenv("CONFIG_FILE"))
+	cfg, err := config.New(os.Getenv("CONFIG_FILE"))
 	if err != nil {
 		fmt.Printf("Error: %s\n", err.Error())
 	}

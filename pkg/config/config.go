@@ -36,11 +36,11 @@ type SubConfiguration struct {
 	FromSettingsFile         string  `yaml:"fromSettings"`
 }
 
-func Load(configFile string) (*Configuration, error) {
+func New(configFile string) (*Configuration, error) {
 	cfg := &Configuration{}
 
 	loadDefaults(cfg)
-	err := loadFromSettingsFile(configFile, cfg)
+	err := loadSettings(cfg, configFile)
 	if err != nil {
 		return nil, err
 	}
@@ -48,7 +48,6 @@ func Load(configFile string) (*Configuration, error) {
 	if err != nil {
 		return nil, err
 	}
-	loadFromCommandLineArguments(cfg)
 
 	return cfg, nil
 }
@@ -57,7 +56,7 @@ func loadDefaults(cfg *Configuration) {
 	cfg.Environment = "Development"
 }
 
-func loadFromSettingsFile(configFile string, cfg *Configuration) error {
+func loadSettings(cfg *Configuration, configFile string) error {
 	if configFile == "" {
 		return nil
 	}
@@ -112,15 +111,15 @@ func loadFromEnvironmentVariables(cfg *Configuration) error {
 		}
 	}
 
-	return populate("", os.Getenv, cfg)
+	return populate(cfg, os.Getenv, "")
 }
 
-func populate(prefix string, fromFn func(key string) string, to interface{}) error {
+func populate(cfg interface{}, withFn func(key string) string, prefix string) error {
 	if prefix != "" {
 		prefix += "__"
 	}
 
-	v := reflect.ValueOf(to)
+	v := reflect.ValueOf(cfg)
 	if v.Kind() == reflect.Ptr && !v.IsNil() {
 		v = v.Elem()
 	}
@@ -139,14 +138,14 @@ func populate(prefix string, fromFn func(key string) string, to interface{}) err
 		tagWithPrefix := prefix + tag
 
 		if field.Kind() == reflect.Ptr && !field.IsNil() && field.Type().Elem().Kind() == reflect.Struct {
-			err := populate(tagWithPrefix, fromFn, field.Interface())
+			err := populate(field.Interface(), withFn, tagWithPrefix)
 			if err != nil {
 				return err
 			}
 			continue
 		}
 
-		envValue := fromFn(tagWithPrefix)
+		envValue := withFn(tagWithPrefix)
 		if envValue == "" {
 			continue
 		}
@@ -184,8 +183,4 @@ func populate(prefix string, fromFn func(key string) string, to interface{}) err
 	}
 
 	return nil
-}
-
-func loadFromCommandLineArguments(cfg *Configuration) {
-
 }
