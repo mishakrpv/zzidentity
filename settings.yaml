@@ -1,3 +1,3 @@
-fromSettings: value
-sub:
-  fromSettings: value
+environment: Development
+postgres:
+  url: postgres://iam:pwd@localhost:5432/db?sslmode=disable
