@@ -112,10 +112,10 @@ func loadFromEnvironmentVariables(cfg *Configuration) error {
 		}
 	}
 
-	return parseEnv("", cfg)
+	return populate("", os.Getenv, cfg)
 }
 
-func parseEnv(prefix string, to interface{}) error {
+func populate(prefix string, fromFn func(key string) string, to interface{}) error {
 	if prefix != "" {
 		prefix += "__"
 	}
@@ -139,14 +139,14 @@ func parseEnv(prefix string, to interface{}) error {
 		tagWithPrefix := prefix + tag
 
 		if field.Kind() == reflect.Ptr && !field.IsNil() && field.Type().Elem().Kind() == reflect.Struct {
-			err := parseEnv(tagWithPrefix, field.Interface())
+			err := populate(tagWithPrefix, fromFn, field.Interface())
 			if err != nil {
 				return err
 			}
 			continue
 		}
 
-		envValue := os.Getenv(tagWithPrefix)
+		envValue := fromFn(tagWithPrefix)
 		if envValue == "" {
 			continue
 		}
